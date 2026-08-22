@@ -11,7 +11,7 @@ import uuid
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from flask import Flask, Response, jsonify, render_template, request, send_file, send_from_directory
+from flask import Flask, jsonify, render_template, request, send_file
 
 try:
     from notifypy import Notify
@@ -20,19 +20,7 @@ except Exception:
 
 BASE_DIR = Path(__file__).resolve().parent
 DB_PATH = BASE_DIR / "data" / "study_os.db"
-DIST_DIR = BASE_DIR / "frontend" / "dist"
 DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-
-DEFAULT_CP_TAGS = [
-    ("graphs", "Graphs", ["dfs", "bfs", "shortest-path", "dsu", "trees"]),
-    ("dp", "DP", ["knapsack", "lis", "digit-dp", "tree-dp", "bitmask"]),
-    ("greedy", "Greedy", ["sorting", "exchange", "scheduling"]),
-    ("binary-search", "Binary Search", ["on-array", "on-answer", "ternary"]),
-    ("math", "Math", ["number-theory", "combinatorics", "geometry"]),
-    ("strings", "Strings", ["hashing", "kmp", "z-algo", "trie"]),
-    ("ds", "Data Structures", ["fenwick", "segtree", "heap", "stack"]),
-    ("two-pointers", "Two Pointers", ["sliding-window", "meet-in-middle"]),
-]
 
 app = Flask(__name__)
 
@@ -99,45 +87,6 @@ def init_db():
             created_at TEXT NOT NULL,
             FOREIGN KEY(task_id) REFERENCES tasks(id) ON DELETE SET NULL
         );
-        CREATE TABLE IF NOT EXISTS settings (
-            key TEXT PRIMARY KEY,
-            value TEXT NOT NULL
-        );
-        CREATE TABLE IF NOT EXISTS cp_tags (
-            id TEXT PRIMARY KEY,
-            topic TEXT NOT NULL,
-            label TEXT NOT NULL,
-            position INTEGER NOT NULL DEFAULT 0
-        );
-        CREATE TABLE IF NOT EXISTS cp_subtags (
-            id TEXT PRIMARY KEY,
-            tag_id TEXT NOT NULL,
-            slug TEXT NOT NULL,
-            label TEXT NOT NULL,
-            position INTEGER NOT NULL DEFAULT 0,
-            FOREIGN KEY(tag_id) REFERENCES cp_tags(id) ON DELETE CASCADE
-        );
-        CREATE TABLE IF NOT EXISTS solve_logs (
-            id TEXT PRIMARY KEY,
-            task_id TEXT,
-            topic TEXT NOT NULL,
-            tag_id TEXT,
-            subtag_id TEXT,
-            started_at TEXT NOT NULL,
-            ended_at TEXT NOT NULL,
-            duration_ms INTEGER NOT NULL,
-            verdict TEXT NOT NULL DEFAULT 'practice',
-            notes TEXT DEFAULT '',
-            created_at TEXT NOT NULL,
-            FOREIGN KEY(task_id) REFERENCES tasks(id) ON DELETE SET NULL
-        );
-        CREATE TABLE IF NOT EXISTS replans (
-            id TEXT PRIMARY KEY,
-            week_of TEXT NOT NULL,
-            summary TEXT DEFAULT '',
-            payload TEXT NOT NULL,
-            created_at TEXT NOT NULL
-        );
         """
     )
     # v1 -> v1.1 migrations for already-created databases.
@@ -158,24 +107,6 @@ def init_db():
     if count == 0:
         for i, (cid, name, color) in enumerate(DEFAULT_CATEGORIES):
             conn.execute("INSERT INTO categories(id,name,color,position) VALUES (?,?,?,?)", (cid, name, color, i))
-
-    tag_count = conn.execute("SELECT COUNT(*) FROM cp_tags").fetchone()[0]
-    if tag_count == 0:
-        for i, (slug, label, subs) in enumerate(DEFAULT_CP_TAGS):
-            conn.execute("INSERT INTO cp_tags(id,topic,label,position) VALUES (?,?,?,?)", (slug, slug, label, i))
-            for j, sub in enumerate(subs):
-                conn.execute(
-                    "INSERT INTO cp_subtags(id,tag_id,slug,label,position) VALUES (?,?,?,?,?)",
-                    (f"{slug}:{sub}", slug, sub, sub.replace("-", " "), j),
-                )
-
-    defaults = {
-        "zoom": "100",
-        "notify_icon": "",
-        "view": "board",
-    }
-    for key, value in defaults.items():
-        conn.execute("INSERT OR IGNORE INTO settings(key,value) VALUES (?,?)", (key, value))
     conn.commit()
     conn.close()
 
@@ -195,32 +126,12 @@ def log_activity(conn, task_id, action):
     )
 
 
-def get_setting(conn, key: str, default: str = "") -> str:
-    row = conn.execute("SELECT value FROM settings WHERE key=?", (key,)).fetchone()
-    return row["value"] if row else default
-
-
-def notify_icon_path() -> str | None:
-    bundled = BASE_DIR / "data" / "notify-icon.png"
-    if bundled.exists():
-        return str(bundled)
-    conn = db()
-    path = get_setting(conn, "notify_icon", "")
-    conn.close()
-    if path and Path(path).expanduser().exists():
-        return str(Path(path).expanduser())
-    return None
-
-
 def send_notification(title: str, message: str):
-    icon = notify_icon_path()
     try:
         if Notify:
             notification = Notify()
             notification.title = title
             notification.message = message
-            if icon:
-                notification.icon = icon
             notification.send(block=False)
             return True
     except Exception:
@@ -229,11 +140,7 @@ def send_notification(title: str, message: str):
     system = platform.system()
     try:
         if system == "Linux":
-            cmd = ["notify-send"]
-            if icon:
-                cmd.extend(["-i", icon])
-            cmd.extend([title, message])
-            subprocess.Popen(cmd)
+            subprocess.Popen(["notify-send", title, message])
             return True
         if system == "Windows":
             ps = (
@@ -318,30 +225,9 @@ init_db()
 threading.Thread(target=reminder_worker, daemon=True).start()
 
 
-def ics_escape(text: str) -> str:
-    return (text or "").replace("\\", "\\\\").replace(";", "\\;").replace(",", "\\,").replace("\n", "\\n")
-
-
-def due_to_ics(due_at: str) -> str:
-    raw = (due_at or "").replace("-", "").replace(":", "")
-    if "T" in raw:
-        date, time_part = raw.split("T", 1)
-        time_part = (time_part + "000000")[:6]
-        return f"{date}T{time_part}"
-    return raw[:8]
-
-
 @app.get("/")
 def index():
-    dist_index = DIST_DIR / "index.html"
-    if dist_index.exists():
-        return send_from_directory(DIST_DIR, "index.html")
     return render_template("index.html")
-
-
-@app.get("/assets/<path:filename>")
-def vite_assets(filename):
-    return send_from_directory(DIST_DIR / "assets", filename)
 
 
 @app.get("/api/state")
@@ -350,21 +236,11 @@ def state():
     cats = conn.execute("SELECT * FROM categories ORDER BY position").fetchall()
     tasks = conn.execute("SELECT * FROM tasks ORDER BY category_id, COALESCE(parent_id, ''), position, created_at").fetchall()
     reminders = conn.execute("SELECT * FROM reminders").fetchall()
-    settings = {row["key"]: row["value"] for row in conn.execute("SELECT key, value FROM settings")}
-    tags = conn.execute("SELECT * FROM cp_tags ORDER BY position").fetchall()
-    subtags = conn.execute("SELECT * FROM cp_subtags ORDER BY position").fetchall()
-    logs = conn.execute("SELECT * FROM solve_logs ORDER BY created_at DESC LIMIT 80").fetchall()
-    last_replan = conn.execute("SELECT * FROM replans ORDER BY created_at DESC LIMIT 1").fetchone()
     conn.close()
     return jsonify({
         "categories": [dict(c) for c in cats],
         "tasks": [dict(t) for t in tasks],
         "reminders": [dict(r) for r in reminders],
-        "settings": settings,
-        "cp_tags": [dict(t) for t in tags],
-        "cp_subtags": [dict(s) for s in subtags],
-        "solve_logs": [dict(x) for x in logs],
-        "last_replan": dict(last_replan) if last_replan else None,
     })
 
 
@@ -558,141 +434,6 @@ def import_json():
         conn.execute("INSERT INTO reminders(id,task_id,enabled,mode,remind_at,interval_minutes,weekdays,last_sent_at) VALUES (?,?,?,?,?,?,?,?)", (r["id"], r["task_id"], r.get("enabled", 1), r.get("mode", "once"), r.get("remind_at"), r.get("interval_minutes"), r.get("weekdays", "[]"), r.get("last_sent_at")))
     conn.commit(); conn.close()
     return jsonify({"ok": True})
-
-
-@app.put("/api/settings")
-def put_settings():
-    payload = request.get_json(force=True) or {}
-    conn = db()
-    for key, value in payload.items():
-        conn.execute("INSERT INTO settings(key,value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", (str(key), str(value)))
-    conn.commit()
-    settings = {row["key"]: row["value"] for row in conn.execute("SELECT key, value FROM settings")}
-    conn.close()
-    return jsonify(settings)
-
-
-@app.get("/api/calendar.ics")
-def calendar_ics():
-    conn = db()
-    tasks = conn.execute(
-        "SELECT id, title, notes, due_at, completed FROM tasks WHERE due_at IS NOT NULL ORDER BY due_at"
-    ).fetchall()
-    conn.close()
-    lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Study OS//EN", "CALSCALE:GREGORIAN"]
-    for task in tasks:
-        stamp = due_to_ics(task["due_at"])
-        lines += [
-            "BEGIN:VEVENT",
-            f"UID:{task['id']}@study-os.local",
-            f"DTSTAMP:{datetime.now().strftime('%Y%m%dT%H%M%S')}",
-            f"DTSTART:{stamp}",
-            f"SUMMARY:{ics_escape(task['title'])}",
-            f"DESCRIPTION:{ics_escape(task['notes'] or '')}",
-            f"STATUS:{'COMPLETED' if task['completed'] else 'CONFIRMED'}",
-            "END:VEVENT",
-        ]
-    lines.append("END:VCALENDAR")
-    body = "\r\n".join(lines) + "\r\n"
-    return Response(body, mimetype="text/calendar", headers={"Content-Disposition": "attachment; filename=study-os.ics"})
-
-
-@app.post("/api/solve-logs")
-def create_solve_log():
-    p = request.get_json(force=True)
-    lid = uuid.uuid4().hex
-    created = now_iso()
-    conn = db()
-    conn.execute(
-        """INSERT INTO solve_logs(id,task_id,topic,tag_id,subtag_id,started_at,ended_at,duration_ms,verdict,notes,created_at)
-           VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
-        (
-            lid,
-            p.get("task_id") or None,
-            (p.get("topic") or "").strip() or "untitled",
-            p.get("tag_id") or None,
-            p.get("subtag_id") or None,
-            p.get("started_at") or created,
-            p.get("ended_at") or created,
-            int(p.get("duration_ms") or 0),
-            p.get("verdict") or "practice",
-            p.get("notes") or "",
-            created,
-        ),
-    )
-    conn.commit()
-    conn.close()
-    return jsonify({"id": lid}), 201
-
-
-@app.delete("/api/solve-logs/<lid>")
-def delete_solve_log(lid):
-    conn = db()
-    conn.execute("DELETE FROM solve_logs WHERE id=?", (lid,))
-    conn.commit()
-    conn.close()
-    return jsonify({"ok": True})
-
-
-@app.get("/api/replan/context")
-def replan_context():
-    conn = db()
-    week_start = (datetime.now() - timedelta(days=datetime.now().weekday())).date().isoformat()
-    tasks = [dict(t) for t in conn.execute("SELECT * FROM tasks ORDER BY category_id, position").fetchall()]
-    cats = [dict(c) for c in conn.execute("SELECT * FROM categories ORDER BY position").fetchall()]
-    logs = [dict(x) for x in conn.execute("SELECT * FROM solve_logs ORDER BY created_at DESC LIMIT 40").fetchall()]
-    last = conn.execute("SELECT week_of, summary, created_at FROM replans ORDER BY created_at DESC LIMIT 1").fetchone()
-    conn.close()
-    open_tasks = [t for t in tasks if not t["completed"]]
-    return jsonify({
-        "week_of": week_start,
-        "timezone": "Africa/Cairo",
-        "categories": cats,
-        "open_tasks": open_tasks,
-        "overdue": [t for t in open_tasks if t.get("due_at") and t["due_at"] < now_iso()],
-        "recent_solves": logs,
-        "last_replan": dict(last) if last else None,
-    })
-
-
-@app.post("/api/replan")
-def apply_replan():
-    p = request.get_json(force=True)
-    rid = uuid.uuid4().hex
-    created = now_iso()
-    week_of = p.get("week_of") or datetime.now().date().isoformat()
-    conn = db()
-    for t in p.get("add_tasks", []):
-        tid = t.get("id") or uuid.uuid4().hex
-        parent_id = t.get("parent_id") or None
-        sibling_count = conn.execute(
-            "SELECT COUNT(*) FROM tasks WHERE category_id=? AND parent_id IS ?",
-            (t["category_id"], parent_id),
-        ).fetchone()[0]
-        conn.execute(
-            "INSERT INTO tasks(id,category_id,parent_id,title,kind,url,notes,priority,due_at,created_at,updated_at,position) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
-            (tid, t["category_id"], parent_id, t["title"].strip(), t.get("kind", "task"), t.get("url", ""), t.get("notes", ""), t.get("priority", "medium"), t.get("due_at") or None, created, created, sibling_count),
-        )
-        log_activity(conn, tid, "created")
-    for t in p.get("update_tasks", []):
-        current = conn.execute("SELECT * FROM tasks WHERE id=?", (t.get("id"),)).fetchone()
-        if not current:
-            continue
-        title = t.get("title", current["title"])
-        notes = t.get("notes", current["notes"])
-        priority = t.get("priority", current["priority"])
-        due_at = t.get("due_at", current["due_at"])
-        conn.execute(
-            "UPDATE tasks SET title=?, notes=?, priority=?, due_at=?, updated_at=?, overdue_notified_at=? WHERE id=?",
-            (title, notes, priority, due_at or None, created, None if due_at != current["due_at"] else current["overdue_notified_at"], current["id"]),
-        )
-    conn.execute(
-        "INSERT INTO replans(id,week_of,summary,payload,created_at) VALUES (?,?,?,?,?)",
-        (rid, week_of, p.get("summary") or "", json.dumps(p), created),
-    )
-    conn.commit()
-    conn.close()
-    return jsonify({"id": rid, "ok": True})
 
 
 if __name__ == "__main__":

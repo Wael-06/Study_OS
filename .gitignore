@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.venv/
+__pycache__/
+*.pyc
+data/*.db
+data/*-export.json
+docs/
+*.tsbuildinfo
+vite.config.js
+vite.config.d.ts
+.DS_Store

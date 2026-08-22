@@ -1,6 +1,6 @@
 # Study OS — local study planner
 
-A local browser app for planning and tracking study across Systems CS, Math & Algorithms, ML, Backend and Competitive Programming.
+A local browser app for planning and tracking study.
 
 ## v1.1 changes
 - No sidebar; single focused board inspired by the uploaded references.

@@ -19,7 +19,7 @@ except Exception:
     Notify = None
 
 BASE_DIR = Path(__file__).resolve().parent
-DB_PATH = BASE_DIR / "data" / "study_os.db"
+DB_PATH = Path(os.environ.get("STUDY_OS_DB_PATH", BASE_DIR / "data" / "study_os.db"))
 DB_PATH.parent.mkdir(parents=True, exist_ok=True)
 
 app = Flask(__name__)
@@ -437,4 +437,4 @@ def import_json():
 
 
 if __name__ == "__main__":
-    app.run(host="127.0.0.1", port=5001, debug=False)
+    app.run(host="127.0.0.1", port=int(os.environ.get("STUDY_OS_API_PORT", "5001")), debug=False)

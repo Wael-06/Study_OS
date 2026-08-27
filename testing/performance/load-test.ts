@@ -1,12 +1,12 @@
 import { performance } from "node:perf_hooks";
 
-const url = process.env.STUDY_OS_URL || "http://127.0.0.1:5001/api/state";
+const url = process.env.STUDY_OS_URL || "http://127.0.0.1:5101/api/state";
 const total = Number(process.env.LOAD_REQUESTS || 100);
 const workers = Number(process.env.LOAD_WORKERS || 10);
 
 if (process.argv.includes("--help") || process.argv.includes("-h")) {
   console.log("Usage: LOAD_REQUESTS=1000 LOAD_WORKERS=25 npm run test:load");
-  console.log("Optional: STUDY_OS_URL=http://127.0.0.1:5001/api/state");
+  console.log("Optional: STUDY_OS_URL=http://127.0.0.1:5101/api/state");
   process.exit(0);
 }
 

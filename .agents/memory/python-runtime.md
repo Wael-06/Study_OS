@@ -1,6 +1,6 @@
 ---
 name: Python runtime availability
-description: Replit environment behavior for projects that keep a Python backend beside a Node frontend.
+description: environment behavior for projects that keep a Python backend beside a Node frontend.
 ---
 
 The workspace can have Node tooling available while no `python` or `python3` executable is present in the workflow environment. Install the Python module through the supported package-management flow before starting a Flask workflow.

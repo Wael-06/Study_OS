@@ -10,7 +10,9 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const apiPort = 5101;
 const webPort = 5100;
 const apiUrl = `http://127.0.0.1:${apiPort}`;
-const dbPath = join(mkdtempSync(join(tmpdir(), "study-os-test-")), "study_os.db");
+const testDirectory = mkdtempSync(join(tmpdir(), "study-os-test-"));
+const dbPath = join(testDirectory, "study_os.db");
+const exportPath = join(testDirectory, "study-os-export.json");
 
 const portInUse = (port: number) => new Promise<boolean>((resolve) => {
   const server = createConnection({ host: "127.0.0.1", port });
@@ -23,9 +25,9 @@ if (await portInUse(apiPort) || await portInUse(webPort)) {
   process.exit(1);
 }
 
-const environment = { ...process.env, STUDY_OS_DB_PATH: dbPath, STUDY_OS_API_PORT: String(apiPort), STUDY_OS_API_URL: apiUrl };
+const environment = { ...process.env, STUDY_OS_DB_PATH: dbPath, STUDY_OS_EXPORT_PATH: exportPath, STUDY_OS_API_PORT: String(apiPort), STUDY_OS_API_URL: apiUrl };
 const processes = [
-  spawn("python3", [join(root, "app.py")], { cwd: root, env: environment, stdio: "inherit" }),
+  spawn("npx", ["tsx", join(root, "server/index.ts")], { cwd: root, env: environment, stdio: "inherit", shell: false }),
   spawn("npx", ["vite", "--host", "127.0.0.1", "--port", String(webPort)], { cwd: root, env: environment, stdio: "inherit", shell: false }),
 ];
 let stopping = false;

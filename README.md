@@ -32,7 +32,7 @@ Eventually the original frontend became a bottleneck. The growing UI had more st
 
 That led to the current architecture:
 
-**React + TypeScript + Vite** for the frontend, with **Flask + SQLite** remaining as the local backend and persistence layer.
+**React + TypeScript + Vite** for the frontend, with a **TypeScript API + SQLite** as the active local backend and persistence layer.
 
 This was not just a technology upgrade. It became part of the learning goal of the project: Study Planner should help me learn the engineering concepts I am using, not just produce a working interface.
 
@@ -89,7 +89,7 @@ Browser
 
 The frontend owns the application experience and typed client-side data flow.
 
-The Flask layer remains responsible for the local API and persistence behavior.
+The TypeScript API remains responsible for the local API and persistence behavior. The routes and SQLite schema retain the existing Python implementation's behavior so the migration can be verified incrementally.
 
 SQLite keeps the system simple, portable, and dependency-light.
 
@@ -134,7 +134,7 @@ That experience is one of the most valuable outcomes of the project.
 - Reworked the frontend around React and TypeScript.
 - Introduced typed frontend models and API helpers.
 - Moved away from an increasingly difficult-to-maintain vanilla frontend.
-- Kept Flask and SQLite as the local persistence layer.
+- Migrated the local API from Flask to TypeScript while retaining SQLite.
 - Continued iterating on the board, task hierarchy, calendar, reminders, and supporting workflows.
 - Used AI much more heavily as a frontend development partner.
 
@@ -198,7 +198,7 @@ npm run dev
 npm run build
 ```
 
-The local application uses the browser frontend with the Flask API behind it.
+The local application uses the browser frontend with the TypeScript API behind it. The API continues to use `data/study_os.db`; existing databases are opened in place and retain their schema. Before migrating an existing installation, make a JSON export with the app's Export action or copy the database file. The previous Flask implementation remains in `app.py` as a rollback reference during this migration.
 
 ## Data
 

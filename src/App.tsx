@@ -5,6 +5,7 @@ import {
   Search, SlidersHorizontal, Timer, Trash2, X, Play, Pause, RotateCcw
 } from "lucide-react";
 import { api, childrenOf, rootsFor } from "./api";
+import { overdueTaskIds } from "./notifications";
 import type { AppState, Category, CategoryColor, Priority, Task, TaskDraft, TaskKind } from "./types";
 
 const emptyState: AppState = { categories: [], tasks: [], reminders: [] };
@@ -40,11 +41,11 @@ export default function App() {
 
   const showLocalNotifications = useCallback(() => {
     if (!("Notification" in window)) return;
-    const due = state.tasks.filter((task) => isOverdue(task));
     const seen = JSON.parse(localStorage.getItem("study-os-notified") || "[]") as string[];
-    due.filter((task) => !seen.includes(task.id)).forEach((task) => {
+    overdueTaskIds(state.tasks, seen).forEach((taskId) => {
+      const task = state.tasks.find((item) => item.id === taskId)!;
       new Notification("Study OS — attention", { body: `${task.title} is overdue.`, icon: "/notification-logo.svg" });
-      seen.push(task.id);
+      seen.push(taskId);
     });
     localStorage.setItem("study-os-notified", JSON.stringify(seen.slice(-100)));
   }, [state.tasks]);

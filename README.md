@@ -1,4 +1,4 @@
-# METIS— local study planner
+# Dtudy_OS — local study planner
 
 A local browser app for planning and tracking study .
 

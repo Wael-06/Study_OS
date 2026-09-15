@@ -1,4 +1,4 @@
-# Dtudy_OS — local study planner
+# Study_OS — local study planner
 
 A local browser app for planning and tracking study .
 

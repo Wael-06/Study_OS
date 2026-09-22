@@ -10,7 +10,11 @@ This is the practical guide for maintaining the project.
 - Vite forwards every `/api/...` request to the TypeScript API, so React can use relative URLs.
 - **SQLite** stores the plan in `data/study_os.db`.
 
-The old Flask implementation remains in `app.py` as a rollback/reference path. It is not started by the normal `npm run dev` command.
+The old Flask implementation remains in `app.py` as a historical/reference path. It is not started by the normal launch scripts or `npm run dev` command.
+
+## Branch workflow
+
+Use `dev` for implementation, migration work, and the test suite. Open pull requests from `dev` into `main` only after `npm run test:all` and `npm run build` pass. Keep `main` as the stable branch users can clone and run without the legacy Python stack.
 
 ## Commands
 

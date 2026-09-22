@@ -81,7 +81,7 @@ Browser
     └── fetch('/api/...')
             │
             ▼
-        Flask API
+        TypeScript API
             │
             ▼
         SQLite
@@ -89,7 +89,7 @@ Browser
 
 The frontend owns the application experience and typed client-side data flow.
 
-The TypeScript API remains responsible for the local API and persistence behavior. The routes and SQLite schema retain the existing Python implementation's behavior so the migration can be verified incrementally.
+The TypeScript API is responsible for the local API and persistence behavior. It preserves the existing SQLite schema and route contract so existing data can be used without a rewrite.
 
 SQLite keeps the system simple, portable, and dependency-light.
 
@@ -104,8 +104,8 @@ SQLite keeps the system simple, portable, and dependency-light.
 
 ### Backend
 
-- Python
-- Flask
+- Node.js
+- TypeScript
 - SQLite
 
 ### Development
@@ -198,7 +198,14 @@ npm run dev
 npm run build
 ```
 
-The local application uses the browser frontend with the TypeScript API behind it. The API continues to use `data/study_os.db`; existing databases are opened in place and retain their schema. Before migrating an existing installation, make a JSON export with the app's Export action or copy the database file. The previous Flask implementation remains in `app.py` as a rollback reference during this migration.
+The local application uses the browser frontend with the TypeScript API behind it. The API runs on port `5001`, and Vite serves the UI on port `5000`. Existing databases are opened in place and retain their schema. Before migrating an existing installation, make a JSON export with the app's Export action or copy the database file. The previous Flask implementation remains in `app.py` as a historical reference and is not part of the normal runtime.
+
+## Branches
+
+- `main` is the stable, cloneable application branch. It contains the runtime and production build path.
+- `dev` is the integration branch for test-suite work, migration changes, and release candidates.
+
+Develop changes on `dev`, run the full test suite and build, then open a pull request from `dev` into `main`. Keep `main` deployable and avoid running the legacy Flask application from either branch.
 
 ## Data
 

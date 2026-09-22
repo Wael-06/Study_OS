@@ -50,7 +50,7 @@ Browser
 - `server/index.ts`: API routes, SQLite schema, ordering, completion, reports, and import/export.
 - `vite.config.ts`: frontend server and `/api` proxy configuration.
 - `testing/support/start-stack.ts`: isolated test server and temporary database setup.
-- `app.py`: legacy Flask implementation retained as a rollback/reference implementation during migration.
+- `app.py`: legacy Flask implementation retained as a historical/reference implementation; it is not part of the active runtime.
 
 ## Request Flow
 

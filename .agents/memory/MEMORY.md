@@ -1,1 +1,0 @@
-- [Python runtime availability](python-runtime.md) — Replit may not expose Python until the Python module is installed; verify the interpreter before configuring workflows.

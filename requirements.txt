@@ -1,4 +1,0 @@
-Flask>=3.0,<4
-notify-py>=0.3.42,<1
-flask
-notify-py
